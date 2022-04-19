@@ -1,6 +1,6 @@
 import copy
 import fileinput
-
+import operator
 # Represents an instance of the game
 import random
 import string
@@ -56,8 +56,6 @@ class Wordle:
             # guess = input("\nput in guess")
             # g = Guess(guess)
 
-            # Get a guess
-            print("Put in a guess: ")
             print("Before", len(self.solver.current_word_list))
             g = self.solver.make_guess()
             print("After", len(self.solver.current_word_list))
@@ -101,6 +99,13 @@ class Solver:
         self.colors = colors
         self.guess_word = guess_word
         self.guess_history = []
+        self.letter_scores = {
+            'a': 43.31, 'b': 10.56, 'c': 23.13, 'd': 17.25, 'e': 56.88, 'f': 9.24,
+            'g': 12.59, 'h': 15.31, 'i': 38.45, 'j': 1.00, 'k': 5.61, 'l': 27.98,
+            'm': 15.36, 'n': 33.92, 'o': 36.41, 'p': 16.14, 'q': 1.00, 'r': 38.64,
+            's': 29.23, 't': 35.43, 'u': 18.51, 'v': 5.13, 'w': 6.57, 'x': 1.48,
+            'y': 9.06, 'z': 1.39
+        }
 
         # initialize values to 0 for all letter keys in dictionary
         self.letter_frequency = {}
@@ -140,12 +145,15 @@ class Solver:
                 possible_words.append(word)
 
         # not sure if this is really a smart way to do this
-        second_letter = self.most_common_letter_at_index(1)
-        for word in possible_words:
-            if word[1] != second_letter and len(possible_words) != 1:
-                possible_words.remove(word)
+       # second_letter = self.most_common_letter_at_index(1)
+       # for word in possible_words:
+       #     if word[1] != second_letter and len(possible_words) != 1:
+       #         possible_words.remove(word)
 
         guess_word = random.choice(possible_words)
+       # current_word_scores = self.calculate_word_scores(possible_words)
+       # guess_word = max(zip(current_word_scores.values(), current_word_scores.keys()))[1]
+       # print("This word has a score of ", current_word_scores[guess_word])
         return guess_word
 
     # calculates how frequently each letter appears at a given index in the current word list
@@ -240,7 +248,19 @@ class Solver:
                     if word[index] != letter:
                         self.current_word_list.remove(word)
 
+    def calculate_word_scores(self, word_list):
+        word_scores = {}
+        for word in word_list:
+            word_score = 0
+            for letter in word:
+                word_score = word_score + self.letter_scores[letter]
+
+            word_scores[word] = word_score
+
+        return word_scores
+
 
 if __name__ == '__main__':
     wordle = Wordle()
     wordle.solve()
+
