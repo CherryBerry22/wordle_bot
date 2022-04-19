@@ -127,7 +127,3 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-/.idea/inspectionProfiles/profiles_settings.xml
-/.idea/wordle_bot.iml
-/.idea/workspace.xml
-/.idea/misc.xml
