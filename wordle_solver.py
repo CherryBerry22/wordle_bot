@@ -1,4 +1,5 @@
 import fileinput
+import screen_reader
 
 class Wordle:
     def __init__(self):
@@ -91,5 +92,7 @@ class Solver:
 
 if __name__ == '__main__':
     wordle = Wordle()
+    #screen_reader.mouse_pos()
+    #screen_reader.get_colors(1)
 
     wordle.solve()
