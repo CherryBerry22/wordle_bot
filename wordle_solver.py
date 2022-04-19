@@ -23,61 +23,62 @@ class Wordle:
         # solver instance
         self.solver = Solver(self.word_list, ['*', '*', '*', '*', '*'], "soare")
 
+    def split(word):
+        return [char for char in word]
+
     def solve(self):
         print("solved state: {}".format(self.state))
         print(len(self.word_list))
-        correct_word = input("put in correct word")
 
-        # correct word is not valid
-        if correct_word == "":
-            print("wrong")
-            # wrong
-        # correct word is not valid
-        else:
-            # guess = input("put in guess")
+        # Get a guess
+        print("Try guessing: ")
+        g = self.solver.make_guess()
+
+        g.print_word()
+        turn = 1
+        print("turn:", turn)
+
+        # Loop while the guess is wrong and still within 6 guesses
+        while not g.solved() and turn < 6:
+            g.colors = list(input("Please input the colors returned"))
+
+            if (g.solved()):
+                print("Yay!")
+                return
+            # ai does stuff
+            if turn != 1:
+                g.print_word()
+            g.print_colors()
+
+            # append guess to list of previous guesses
+            self.solver.guess_history.append(g)
+
+            # guess = input("\nput in guess")
             # g = Guess(guess)
 
             # Get a guess
             print("Put in a guess: ")
+            print("Before", len(self.solver.current_word_list))
             g = self.solver.make_guess()
-
-            g.print_word()
-            turn = 1
+            print("After", len(self.solver.current_word_list))
+            turn = turn + 1
             print("turn:", turn)
 
-            # Loop while the guess is wrong and still within 6 guesses
-            while not g.solved(correct_word) and turn < 6:
-                g.get_correct_colors(correct_word)
-                # ai does stuff
-                if turn != 1:
-                    g.print_word()
-                g.print_colors()
+            print("please make this guess:")
+            g.print_word()
+        print("end")
 
-                # append guess to list of previous guesses
-                self.solver.guess_history.append(g)
+    # get a guess - starter
+    # while !solved
+    # make a guess
+    # get the colors
+    # get new guess based on colors
 
-                # guess = input("\nput in guess")
-                # g = Guess(guess)
-
-                # Get a guess
-                print("Put in a guess: ")
-                print("Before", len(self.solver.current_word_list))
-                g = self.solver.make_guess()
-                print("After", len(self.solver.current_word_list))
-                turn = turn + 1
-                print("turn:", turn)
-            print("end")
-
-        # get a guess - starter
-        # while !solved
-        # make a guess
-        # get the colors
-        # get new guess based on colors
 
 class Guess:
     def __init__(self, word):
-        self.word = [x for x in word] # initialize word to guessed word
-        self.colors = ['*', '*', '*', '*', '*'] # initialize colors to all "Gray"
+        self.word = [x for x in word]  # initialize word to guessed word
+        self.colors = ['*', '*', '*', '*', '*']  # initialize colors to all "Gray"
 
     def print_colors(self):
         print(self.colors)
@@ -86,33 +87,12 @@ class Guess:
     def print_word(self):
         print(self.word)
 
-    def solved(self, correct_word=""):
-        if correct_word == "":
-            print("get word from screen")
-            # call other stuff
-        else:
-            for i in range(0, len(correct_word)):
-                if (correct_word[i] != self.word[i]):
-                    return False
-            print("Correct word chosen!", correct_word)
-            return True
-
-    def get_correct_colors(self, correct_word=""):
-        if correct_word == "":
-            print("get word from screen")
-            # call other stuff
-        else:
-            for i in range(0, len(correct_word)):
-                if correct_word.__contains__(self.word[i]):
-                    if self.word[i] == correct_word[i]:
-                        self.colors[i] = "g"
-                    else:
-                        # match = [index for index, f in enumerate(self.word) if f in correct_word]
-                        # print(match)
-                        if self.colors[i] == "g":
-                            self.colors[i] = "*"
-                        else:
-                            self.colors[i] = "y"
+    def solved(self):
+        for i in range(0, len(self.colors)):
+            if (self.colors[i] != 'G'):
+                return False
+        print("Correct word chosen!")
+        return True
 
 
 class Solver:
@@ -125,11 +105,11 @@ class Solver:
         # initialize values to 0 for all letter keys in dictionary
         self.letter_frequency = {}
         # categorize words by
-        self.num_unique_letters = {1:0, 2:0, 3:0, 4:0, 5:0}
+        self.num_unique_letters = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
         alphabet_string = string.ascii_lowercase
         alphabet_list = list(alphabet_string)
         for letter in alphabet_list:
-            self.letter_frequency.update({letter : 0})
+            self.letter_frequency.update({letter: 0})
 
     def search_word_list(self, word, colors):
         possible_words = []
@@ -151,7 +131,6 @@ class Solver:
             num = len(s)
             self.num_unique_letters[num] = self.num_unique_letters.get(len(s)) + 1
 
-
     def guess_builder(self):
         first_letter = self.most_common_letter_at_index(0)
 
@@ -169,7 +148,6 @@ class Solver:
         guess_word = random.choice(possible_words)
         return guess_word
 
-
     # calculates how frequently each letter appears at a given index in the current word list
     # and returns the most common
     def most_common_letter_at_index(self, index):
@@ -177,7 +155,7 @@ class Solver:
         alphabet_string = string.ascii_lowercase
         alphabet_list = list(alphabet_string)
         for letter in alphabet_list:
-            letter_frequency.update({letter : 0})
+            letter_frequency.update({letter: 0})
 
         for word in self.current_word_list:
             letter = word[index]
@@ -203,7 +181,7 @@ class Solver:
     # eliminates words from word list that are impossible given color feedback of a guess
     def eliminate_words(self):
         # get previous guess
-        prev_guess = self.guess_history[-1]
+        prev_guess = self.guess_history[len(self.guess_history) - 1]
 
         # list of letters not in correct word
         wrong_letters = []
@@ -211,7 +189,7 @@ class Solver:
         # list of letters in word, but in wrong position
         misplaced_letters = []
 
-        #list of letters with correct position
+        # list of letters with correct position
         correct_letters = []
 
         # iterate through colors in previous guess
@@ -222,13 +200,12 @@ class Solver:
                 wrong_letters.append(prev_guess.word[i])
 
             # append tuple of misplaced letter and index to list
-            if prev_guess.colors[i] == 'y':
+            if prev_guess.colors[i] == 'Y':
                 misplaced_letters.append((prev_guess.word[i], i))
 
             # append tuple of correct letter and index to list
-            if prev_guess.colors[i] == 'g':
+            if prev_guess.colors[i] == 'G':
                 correct_letters.append((prev_guess.word[i], i))
-
 
         # get rid of all words containing wrong letters
         if wrong_letters:
@@ -240,6 +217,11 @@ class Solver:
 
         # get rid of all words containing misplaced letter in wrong location
         if misplaced_letters:
+            for letter in misplaced_letters:
+                for word in self.current_word_list[:]:
+                    if letter[0] not in word:
+                        self.current_word_list.remove(word)
+
             for letter_tuple in misplaced_letters:
                 for word in self.current_word_list[:]:
                     letter = letter_tuple[0]
@@ -257,6 +239,7 @@ class Solver:
 
                     if word[index] != letter:
                         self.current_word_list.remove(word)
+
 
 if __name__ == '__main__':
     wordle = Wordle()
