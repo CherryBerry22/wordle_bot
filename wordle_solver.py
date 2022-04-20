@@ -20,15 +20,21 @@ class Wordle:
         self.word_list = fileObj.read().split("\",\"")
         fileObj.close()
 
+        fileObj2 = open("puzzlewords.txt", "r")
+
+        self.puzzle_word_list = fileObj2.read().split("\", \"")
+
         # solver instance
-        self.solver = Solver(self.word_list, ['*', '*', '*', '*', '*'], "soare")
+        #self.solver = Solver(self.word_list, ['*', '*', '*', '*', '*'], "soare")
+        self.solver = Solver(self.puzzle_word_list, ['*', '*', '*', '*', '*'], "soare")
 
     def split(word):
         return [char for char in word]
 
     def solve(self):
         print("solved state: {}".format(self.state))
-        print(len(self.word_list))
+        #print(len(self.word_list))
+        print(len(self.puzzle_word_list))
 
         # Get a guess
         print("Try guessing: ")
@@ -208,11 +214,11 @@ class Solver:
                 wrong_letters.append(prev_guess.word[i])
 
             # append tuple of misplaced letter and index to list
-            if prev_guess.colors[i] == 'Y':
+            if prev_guess.colors[i].upper() == 'Y':
                 misplaced_letters.append((prev_guess.word[i], i))
 
             # append tuple of correct letter and index to list
-            if prev_guess.colors[i] == 'G':
+            if prev_guess.colors[i].upper() == 'G':
                 correct_letters.append((prev_guess.word[i], i))
 
         # get rid of all words containing wrong letters
@@ -222,6 +228,7 @@ class Solver:
                 for word in self.current_word_list[:]:
                     if letter in word:
                         self.current_word_list.remove(word)
+                        print("Removed: ", word)
 
         # get rid of all words containing misplaced letter in wrong location
         if misplaced_letters:
@@ -229,6 +236,8 @@ class Solver:
                 for word in self.current_word_list[:]:
                     if letter[0] not in word:
                         self.current_word_list.remove(word)
+                        print("Removed: ", word)
+
 
             for letter_tuple in misplaced_letters:
                 for word in self.current_word_list[:]:
@@ -237,6 +246,7 @@ class Solver:
 
                     if word[index] == letter:
                         self.current_word_list.remove(word)
+                        print("Removed: ", word)
 
         # get rid of all words that don't have letter in correct place
         if correct_letters:
@@ -247,6 +257,7 @@ class Solver:
 
                     if word[index] != letter:
                         self.current_word_list.remove(word)
+                        print("Removed: ", word)
 
     def calculate_word_scores(self, word_list):
         word_scores = {}
