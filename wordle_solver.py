@@ -95,7 +95,7 @@ class Guess:
 
     def solved(self):
         for i in range(0, len(self.colors)):
-            if (self.colors[i] != 'G'):
+            if (self.colors[i].upper() != 'G'):
                 return False
         print("Correct word chosen!")
         return True
@@ -195,12 +195,9 @@ class Solver:
         # check if guess history is empty
         if self.guess_history:
             self.eliminate_words()
-            self.guess_word = self.guess_builder()
-
-        if len(self.guess_history) == 0:
-            new_guess = Guess(self.guess_word)
-        else:
             new_guess = Guess(self.choose_optimal_word_entropy())
+        else:
+            new_guess = Guess(self.guess_word)
 
         return new_guess
 
@@ -218,20 +215,27 @@ class Solver:
         # list of letters with correct position
         correct_letters = []
 
+        correct_check = []
+        misplaced_check = []
+
         # iterate through colors in previous guess
         for i in range(len(prev_guess.colors)):
-
-            # append wrong letter to list
-            if prev_guess.colors[i] == "*":
-                wrong_letters.append(prev_guess.word[i])
-
-            # append tuple of misplaced letter and index to list
-            if prev_guess.colors[i].upper() == 'Y':
-                misplaced_letters.append((prev_guess.word[i], i))
 
             # append tuple of correct letter and index to list
             if prev_guess.colors[i].upper() == 'G':
                 correct_letters.append((prev_guess.word[i], i))
+                correct_check.append(prev_guess.word[i])
+
+            # append tuple of misplaced letter and index to list
+            if prev_guess.colors[i].upper() == 'Y':
+                misplaced_letters.append((prev_guess.word[i], i))
+                misplaced_check.append(prev_guess.word[i])
+
+            # append wrong letter to list
+            if prev_guess.colors[i] == "*":
+                if prev_guess.word[i] not in misplaced_check and prev_guess.word[i] not in correct_check:
+                    wrong_letters.append(prev_guess.word[i])
+
 
         # get rid of all words containing wrong letters
         if wrong_letters:
@@ -240,15 +244,18 @@ class Solver:
                 for word in self.current_word_list[:]:
                     if letter in word:
                         self.current_word_list.remove(word)
-                        #print("Removed: ", word)
+                        if (word == 'savvy'):
+                            print("Removed: ", word)
 
         # get rid of all words containing misplaced letter in wrong location
         if misplaced_letters:
+           # get rid of all words that dont have the misplaced letter anywhere
             for letter in misplaced_letters:
                 for word in self.current_word_list[:]:
                     if letter[0] not in word:
                         self.current_word_list.remove(word)
-                        #print("Removed: ", word)
+                        if(word == 'savvy'):
+                            print("Removed: ", word)
 
 
             for letter_tuple in misplaced_letters:
@@ -258,7 +265,8 @@ class Solver:
 
                     if word[index] == letter:
                         self.current_word_list.remove(word)
-                        #print("Removed: ", word)
+                        if (word == 'savvy'):
+                            print("Removed: ", word)
 
         # get rid of all words that don't have letter in correct place
         if correct_letters:
@@ -269,7 +277,8 @@ class Solver:
 
                     if word[index] != letter:
                         self.current_word_list.remove(word)
-                        #print("Removed: ", word)
+                        if (word == 'savvy'):
+                            print("Removed: ", word)
 
     def choose_optimal_word_entropy(self):
         frequencies = self.calculate_entropy_for_all()
@@ -277,17 +286,39 @@ class Solver:
 
     def calculate_entropy(self, word):
         dict_len = len(self.current_word_list)
-        word_dict = defaultdict(int)
+        prob_of_patterns = defaultdict(int)
 
-        for guess_word in self.current_word_list:
-            word_dict[guess_word] += 1.0 / dict_len
+        for if_answer in self.current_word_list:
+            pattern = create_pattern(if_answer, word)
+            prob_of_patterns[pattern] += 1.0 / dict_len
 
-        information_gain = -1 * sum([val * math.log(val) for val in word_dict.values()])
+        information_gain = -1 * sum([probability * math.log(probability) for probability in prob_of_patterns.values()])
         return information_gain
 
     def calculate_entropy_for_all(self):
         gains = [(word, self.calculate_entropy(word)) for word in self.current_word_list]
         return sorted(gains, key=lambda x: x[1], reverse=True)
+
+
+def create_pattern(answer, guessed_word):
+
+    green_occurrences = defaultdict(int)
+    for s, g in zip(answer, guessed_word):
+        if s == g:
+            green_occurrences[g] += 1
+
+    occurrences = defaultdict(int)
+    pattern = ''
+    for s, g in zip(answer, guessed_word):
+        if s == g:
+            pattern += 'g'
+        else:
+            square = 'y' if g in answer and occurrences[g] < answer.count(g) - \
+                                      green_occurrences[g] else '*'
+            pattern += square
+            occurrences[g] += 1
+
+    return pattern
 
 if __name__ == '__main__':
     wordle = Wordle()
