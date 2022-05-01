@@ -1,9 +1,11 @@
 import copy
 import fileinput
+import math
 import operator
 # Represents an instance of the game
 import random
 import string
+from collections import defaultdict
 
 
 class Wordle:
@@ -98,6 +100,12 @@ class Guess:
         print("Correct word chosen!")
         return True
 
+class EntropySolver:
+    def __init__(self, word_list, colors, guess_word):
+        self.current_word_list = copy.deepcopy(word_list)
+        self.colors = colors
+
+
 
 class Solver:
     def __init__(self, word_list, colors, guess_word):
@@ -189,7 +197,11 @@ class Solver:
             self.eliminate_words()
             self.guess_word = self.guess_builder()
 
-        new_guess = Guess(self.guess_word)
+        if len(self.guess_history) == 0:
+            new_guess = Guess(self.guess_word)
+        else:
+            new_guess = Guess(self.choose_optimal_word_entropy())
+
         return new_guess
 
     # eliminates words from word list that are impossible given color feedback of a guess
@@ -228,7 +240,7 @@ class Solver:
                 for word in self.current_word_list[:]:
                     if letter in word:
                         self.current_word_list.remove(word)
-                        print("Removed: ", word)
+                        #print("Removed: ", word)
 
         # get rid of all words containing misplaced letter in wrong location
         if misplaced_letters:
@@ -236,7 +248,7 @@ class Solver:
                 for word in self.current_word_list[:]:
                     if letter[0] not in word:
                         self.current_word_list.remove(word)
-                        print("Removed: ", word)
+                        #print("Removed: ", word)
 
 
             for letter_tuple in misplaced_letters:
@@ -246,7 +258,7 @@ class Solver:
 
                     if word[index] == letter:
                         self.current_word_list.remove(word)
-                        print("Removed: ", word)
+                        #print("Removed: ", word)
 
         # get rid of all words that don't have letter in correct place
         if correct_letters:
@@ -257,19 +269,25 @@ class Solver:
 
                     if word[index] != letter:
                         self.current_word_list.remove(word)
-                        print("Removed: ", word)
+                        #print("Removed: ", word)
 
-    def calculate_word_scores(self, word_list):
-        word_scores = {}
-        for word in word_list:
-            word_score = 0
-            for letter in word:
-                word_score = word_score + self.letter_scores[letter]
+    def choose_optimal_word_entropy(self):
+        frequencies = self.calculate_entropy_for_all()
+        return frequencies[0][0]
 
-            word_scores[word] = word_score
+    def calculate_entropy(self, word):
+        dict_len = len(self.current_word_list)
+        word_dict = defaultdict(int)
 
-        return word_scores
+        for guess_word in self.current_word_list:
+            word_dict[guess_word] += 1.0 / dict_len
 
+        information_gain = -1 * sum([val * math.log(val) for val in word_dict.values()])
+        return information_gain
+
+    def calculate_entropy_for_all(self):
+        gains = [(word, self.calculate_entropy(word)) for word in self.current_word_list]
+        return sorted(gains, key=lambda x: x[1], reverse=True)
 
 if __name__ == '__main__':
     wordle = Wordle()
