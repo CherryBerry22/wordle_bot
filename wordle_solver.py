@@ -1,15 +1,12 @@
 import copy
 import screen_reader
 import operator
-# Represents an instance of the game
 import random
 import string
 
 class Wordle:
     # Initializes state, opens file and puts words into an array
     def __init__(self):
-
-        self.state = 0
 
         # opens the file in read mode
         fileObj = open("wordlist.txt", "r")
@@ -26,7 +23,9 @@ class Wordle:
         return [char for char in word]
 
     def solve(self):
-        print("solved state: {}".format(self.state))
+
+        reader = screen_reader.ScreenReader()
+
         print(len(self.word_list))
 
         # Get a guess
@@ -39,7 +38,8 @@ class Wordle:
 
         # Loop while the guess is wrong and still within 6 guesses
         while not g.solved() and turn < 6:
-            g.colors = list(input("Please input the colors returned"))
+            g.colors = reader.get_colors(turn)
+            #g.colors = list(input("Please input the colors returned"))
 
             if (g.solved()):
                 print("Yay!")
@@ -63,6 +63,7 @@ class Wordle:
 
             print("please make this guess:")
             g.print_word()
+            input("wait")
         print("end")
 
     # get a guess - starter
@@ -264,4 +265,5 @@ if __name__ == '__main__':
     #screen_reader.mouse_pos()
     #screen_reader.get_colors(1)
     wordle.solve()
+
 
