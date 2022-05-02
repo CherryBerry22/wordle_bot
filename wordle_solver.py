@@ -1,11 +1,11 @@
 import copy
-import fileinput
 import math
-import operator
-# Represents an instance of the game
+import time
 import random
 import string
 from collections import defaultdict
+
+from screen_reader import ScreenReader
 
 
 class Wordle:
@@ -34,9 +34,68 @@ class Wordle:
         return [char for char in word]
 
     def solve(self):
-        print("solved state: {}".format(self.state))
-        #print(len(self.word_list))
-        print(len(self.puzzle_word_list))
+
+        manual = input('would you like to do (M)anual or (A)uto?\n')
+        if manual.upper() == 'A':
+            self.auto()
+        else:
+            self.manual()
+
+    def auto(self):
+        reader = ScreenReader()
+        unlimited = input("keep replaying? y/n (only for wordle unlimited)")
+        if unlimited.upper() == 'Y':
+            self.replay(reader)
+        else:
+            g = self.solver.make_guess()
+            reader.input_guess(g)
+            turn = 1
+            while not g.solved() and turn < 6:
+                g.colors = reader.get_colors(turn)
+                if not g.solved():
+                    self.solver.guess_history.append(g)
+                    g = self.solver.make_guess()
+                    reader.input_guess(g)
+                    turn = turn + 1
+
+            if g.solved():
+                print('Word was {0}'.format(g.word))
+            else:
+                print('Unable to solve :(')
+
+    def replay(self, reader):
+
+        times_played = 0
+        total_turns = 0
+        number_solved = 0
+        while(times_played < 3000):
+            # start a game
+            g = self.solver.make_guess()
+            reader.input_guess(g)
+            turn = 1
+            while not g.solved() and turn < 6:
+                g.colors = reader.get_colors(turn)
+                if not g.solved():
+                    self.solver.guess_history.append(g)
+                    g = self.solver.make_guess()
+                    reader.input_guess(g)
+                    turn = turn + 1
+            #end game
+            times_played += 1
+            total_turns += turn
+            if g.solved():
+                print('Word was {0}'.format(g.word))
+                number_solved += 1
+            else:
+                print('Unable to solve :(')
+            print('\nGames Played: {0}\nAvg Turns: {1}\n'.format(times_played, total_turns/times_played))
+            print('Number solved: {0}\nSolve Rate: {1}'.format(number_solved, number_solved/times_played))
+            self.solver = Solver(self.puzzle_word_list, ['*', '*', '*', '*', '*'], "soare")
+            time.sleep(3)
+            reader.click_replay()
+            time.sleep(1.5)
+
+    def manual(self):
 
         # Get a guess
         print("Try guessing: ")
@@ -53,7 +112,7 @@ class Wordle:
             if (g.solved()):
                 print("Yay!")
                 return
-            # ai does stuff
+
             if turn != 1:
                 g.print_word()
             g.print_colors()
@@ -74,12 +133,6 @@ class Wordle:
             g.print_word()
         print("end")
 
-    # get a guess - starter
-    # while !solved
-    # make a guess
-    # get the colors
-    # get new guess based on colors
-
 
 class Guess:
     def __init__(self, word):
@@ -95,16 +148,10 @@ class Guess:
 
     def solved(self):
         for i in range(0, len(self.colors)):
-            if (self.colors[i].upper() != 'G'):
+            if self.colors[i].upper() != 'G':
                 return False
-        print("Correct word chosen!")
+        # print("Correct word chosen!")
         return True
-
-class EntropySolver:
-    def __init__(self, word_list, colors, guess_word):
-        self.current_word_list = copy.deepcopy(word_list)
-        self.colors = colors
-
 
 
 class Solver:
@@ -214,9 +261,16 @@ class Solver:
 
         # list of letters with correct position
         correct_letters = []
-
-        correct_check = []
-        misplaced_check = []
+        # list of correct letters and misplaced letters to make sure they are accounted for
+        letters_in_answer = []
+        # needed to not get rid of double letters
+        # example, answer is RUMOR and previous guess is HUMOR
+        # color pattern would be *gggg meaning first R would be grey and second R is green
+        # we don't want to remove words with R at the beginning like RUMOR
+        # so we keep it out of the wrong letters
+        for j in range(len(prev_guess.colors)):
+            if prev_guess.colors[j].upper() == 'G' or prev_guess.colors[j].upper() == 'Y':
+                letters_in_answer.append(prev_guess.word[j])
 
         # iterate through colors in previous guess
         for i in range(len(prev_guess.colors)):
@@ -224,16 +278,15 @@ class Solver:
             # append tuple of correct letter and index to list
             if prev_guess.colors[i].upper() == 'G':
                 correct_letters.append((prev_guess.word[i], i))
-                correct_check.append(prev_guess.word[i])
 
             # append tuple of misplaced letter and index to list
             if prev_guess.colors[i].upper() == 'Y':
                 misplaced_letters.append((prev_guess.word[i], i))
-                misplaced_check.append(prev_guess.word[i])
 
             # append wrong letter to list
             if prev_guess.colors[i] == "*":
-                if prev_guess.word[i] not in misplaced_check and prev_guess.word[i] not in correct_check:
+                # do not append wrong letter if it is a second occurrence of a misplaced or correct letter
+                if prev_guess.word[i] not in letters_in_answer:
                     wrong_letters.append(prev_guess.word[i])
 
 
@@ -244,8 +297,6 @@ class Solver:
                 for word in self.current_word_list[:]:
                     if letter in word:
                         self.current_word_list.remove(word)
-                        if (word == 'savvy'):
-                            print("Removed: ", word)
 
         # get rid of all words containing misplaced letter in wrong location
         if misplaced_letters:
@@ -254,9 +305,6 @@ class Solver:
                 for word in self.current_word_list[:]:
                     if letter[0] not in word:
                         self.current_word_list.remove(word)
-                        if(word == 'savvy'):
-                            print("Removed: ", word)
-
 
             for letter_tuple in misplaced_letters:
                 for word in self.current_word_list[:]:
@@ -265,8 +313,6 @@ class Solver:
 
                     if word[index] == letter:
                         self.current_word_list.remove(word)
-                        if (word == 'savvy'):
-                            print("Removed: ", word)
 
         # get rid of all words that don't have letter in correct place
         if correct_letters:
@@ -277,8 +323,6 @@ class Solver:
 
                     if word[index] != letter:
                         self.current_word_list.remove(word)
-                        if (word == 'savvy'):
-                            print("Removed: ", word)
 
     def choose_optimal_word_entropy(self):
         frequencies = self.calculate_entropy_for_all()
