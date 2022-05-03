@@ -35,11 +35,55 @@ class Wordle:
 
     def solve(self):
 
-        manual = input('would you like to do (M)anual or (A)uto?\n')
+        manual = input('would you like to do (M)anual, (T)esting, or (A)uto?\n')
         if manual.upper() == 'A':
             self.auto()
+        elif manual.upper() == 'T':
+            self.testing()
         else:
             self.manual()
+
+    def testing(self):
+        start_word = input('provide a starting word \n'
+                           '(testing can take up to five minutes, python and our algorithm are slow :) )')
+
+        not_solved_list = []
+        times_played = 0
+        total_turns = 0
+        number_solved = 0
+        for secret_word in self.puzzle_word_list:
+            self.solver = Solver(self.puzzle_word_list, ['*', '*', '*', '*', '*'], start_word)
+            guess = Guess(start_word)
+            self.solver.guess_history.append(guess)
+            turn = 1
+            guess.colors = create_pattern(secret_word, guess.word_string)
+            while not guess.solved() and turn < 6:
+                guess = self.solver.make_guess()
+                self.solver.guess_history.append(guess)
+                guess.colors = create_pattern(secret_word, guess.word_string)
+                turn += 1
+            times_played += 1
+            total_turns += turn
+            if guess.solved():
+                number_solved += 1
+                #print('Solved!')
+            else:
+                not_solved_list.append((secret_word, self.solver.guess_history, self.solver.current_word_list))
+                #print('Not solved :(')
+            # print('{0} in {1} turns\n'
+            #        'Games Played: {2}\nAvg Turns: {3}\n'
+            #        'Number solved: {4}\nSolve Rate: {5}'.format(secret_word, turn, times_played,
+            #                                                     total_turns/times_played,number_solved,
+            #                                                     number_solved/times_played))
+        print('Games Played: {0}\nAvg Turns: {1}\n'
+              'Number solved: {2}\nSolve Rate: {3}'.format(times_played,
+                                                           total_turns/times_played,number_solved,
+                                                           number_solved/times_played))
+        for word in not_solved_list:
+            print('unable to solve {0} with these guesses:'.format(word[0]))
+            for g in word[1]:
+                print(g.word_string, g.colors)
+            print('remaining word list: {0}'.format(word[2]))
 
     def auto(self):
         reader = ScreenReader()
@@ -48,15 +92,15 @@ class Wordle:
             self.replay(reader)
         else:
             g = self.solver.make_guess()
-            reader.input_guess(g)
             turn = 1
+            reader.input_guess(g, turn)
             while not g.solved() and turn < 6:
                 g.colors = reader.get_colors(turn)
                 if not g.solved():
                     self.solver.guess_history.append(g)
                     g = self.solver.make_guess()
-                    reader.input_guess(g)
                     turn = turn + 1
+                    reader.input_guess(g, turn)
 
             if g.solved():
                 print('Word was {0}'.format(g.word))
@@ -71,15 +115,16 @@ class Wordle:
         while(times_played < 3000):
             # start a game
             g = self.solver.make_guess()
-            reader.input_guess(g)
             turn = 1
+            reader.input_guess(g, turn)
             while not g.solved() and turn < 6:
                 g.colors = reader.get_colors(turn)
                 if not g.solved():
                     self.solver.guess_history.append(g)
                     g = self.solver.make_guess()
-                    reader.input_guess(g)
                     turn = turn + 1
+                    reader.input_guess(g, turn)
+                    g.colors = reader.get_colors(turn)
             #end game
             times_played += 1
             total_turns += turn
@@ -138,6 +183,9 @@ class Guess:
     def __init__(self, word):
         self.word = [x for x in word]  # initialize word to guessed word
         self.colors = ['*', '*', '*', '*', '*']  # initialize colors to all "Gray"
+        self.word_string = ''
+        for letter in word:
+            self.word_string += letter
 
     def print_colors(self):
         print(self.colors)
@@ -253,8 +301,13 @@ class Solver:
         # get previous guess
         prev_guess = self.guess_history[len(self.guess_history) - 1]
 
+        # remove last guess
+        if prev_guess.word_string in self.current_word_list:
+            self.current_word_list.remove(prev_guess.word_string)
+
         # list of letters not in correct word
         wrong_letters = []
+        wrong_letters_specific_spot = []
 
         # list of letters in word, but in wrong position
         misplaced_letters = []
@@ -263,14 +316,18 @@ class Solver:
         correct_letters = []
         # list of correct letters and misplaced letters to make sure they are accounted for
         letters_in_answer = []
+
+
         # needed to not get rid of double letters
-        # example, answer is RUMOR and previous guess is HUMOR
+        # example, answer is HUMOR and previous guess is RUMOR
         # color pattern would be *gggg meaning first R would be grey and second R is green
-        # we don't want to remove words with R at the beginning like RUMOR
+        # we don't want to remove words with any R like HUMOR
         # so we keep it out of the wrong letters
         for j in range(len(prev_guess.colors)):
-            if prev_guess.colors[j].upper() == 'G' or prev_guess.colors[j].upper() == 'Y':
+            if prev_guess.colors[j].upper() == 'Y' or prev_guess.colors[j].upper() == 'G':
                 letters_in_answer.append(prev_guess.word[j])
+
+
 
         # iterate through colors in previous guess
         for i in range(len(prev_guess.colors)):
@@ -285,17 +342,27 @@ class Solver:
 
             # append wrong letter to list
             if prev_guess.colors[i] == "*":
-                # do not append wrong letter if it is a second occurrence of a misplaced or correct letter
+                # append letter to wrong list if its not second occurrence of a misplaced or correct letter in the word
                 if prev_guess.word[i] not in letters_in_answer:
                     wrong_letters.append(prev_guess.word[i])
+                else:
+                    wrong_letters_specific_spot.append((prev_guess.word[i], i))
 
 
         # get rid of all words containing wrong letters
-        if wrong_letters:
+        if wrong_letters or wrong_letters_specific_spot:
             for letter in wrong_letters:
                 # NOTE: make sure not to modify word list while iterating, so use [:]
                 for word in self.current_word_list[:]:
                     if letter in word:
+                        self.current_word_list.remove(word)
+            # trim words like WITTY, BITTY, etc if the word is FIFTY
+            for letter_tuple in wrong_letters_specific_spot:
+                for word in self.current_word_list[:]:
+                    letter = letter_tuple[0]
+                    index = letter_tuple[1]
+
+                    if word[index] == letter:
                         self.current_word_list.remove(word)
 
         # get rid of all words containing misplaced letter in wrong location

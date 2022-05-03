@@ -64,10 +64,11 @@ class ScreenReader:
         os.remove("current_screen.jpg")
         return colors
 
-    def input_guess(self, guess):
-        self.mouse.position = (self.first_letter, self.initial_row)
-        self.mouse.press(Button.left)
-        self.mouse.release(Button.left)
+    def input_guess(self, guess, turn):
+        if turn == 1:
+            self.mouse.position = (self.first_letter, self.initial_row)
+            self.mouse.press(Button.left)
+            self.mouse.release(Button.left)
         for letter in guess.word:
             self.keyboard.press(letter)
             self.keyboard.release(letter)
@@ -77,7 +78,7 @@ class ScreenReader:
 
     def click_replay(self):
         self.mouse.move(500, -5)
-        self.mouse.position = (550, 1550)
+        self.mouse.position = (self.first_letter, self.initial_row + (self.offset * 6))
         self.mouse.press(Button.left)
         self.mouse.release(Button.left)
 
