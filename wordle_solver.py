@@ -3,6 +3,7 @@ import math
 import time
 import random
 import string
+import shelve
 from collections import defaultdict
 
 from screen_reader import ScreenReader
@@ -26,26 +27,45 @@ class Wordle:
 
         self.puzzle_word_list = fileObj2.read().split("\", \"")
 
+        # Retrieve best performing Tested starting word from Shelf
+        shelve_file = shelve.open("starting_words")
+        starting_words = dict(shelve_file)
+        starting_words = sorted(starting_words, key=starting_words.get)
+        first_guess = starting_words[0]
+
         # solver instance
-        #self.solver = Solver(self.word_list, ['*', '*', '*', '*', '*'], "soare")
-        self.solver = Solver(self.puzzle_word_list, ['*', '*', '*', '*', '*'], "soare")
+        self.solver = Solver(self.puzzle_word_list, ['*', '*', '*', '*', '*'], first_guess)
 
     def split(word):
         return [char for char in word]
 
     def solve(self):
-
-        manual = input('would you like to do (M)anual, (T)esting, or (A)uto?\n')
-        if manual.upper() == 'A':
+        choice = input('Would you like to do (M)anual Play, (A)uto Play, (T)esting, or (P)rint the ranking of starting words?\n')
+        if choice.upper() == 'A':
             self.auto()
-        elif manual.upper() == 'T':
+        elif choice.upper() == 'T':
             self.testing()
-        else:
+        elif choice.upper() == 'M':
             self.manual()
+        elif choice.upper() == 'P':
+            self.print_starting_words()
+            self.solve()
+
+    def print_starting_words(self):
+        shelve_file = shelve.open("starting_words")
+        starting_words = dict(shelve_file)
+        starting_words = sorted(starting_words, key=starting_words.get)
+
+        print("Starting words sorted by Tested performance:")
+        for word in starting_words:
+            print(word + ": " + shelve_file[word])
 
     def testing(self):
-        start_word = input('provide a starting word \n'
-                           '(testing can take up to five minutes, python and our algorithm are slow :) )')
+        start_word = input('Provide a starting word:')
+
+        if start_word not in self.word_list:
+            print("The entered word is not a valid guess")
+            self.testing()
 
         not_solved_list = []
         times_played = 0
@@ -66,24 +86,19 @@ class Wordle:
             total_turns += turn
             if guess.solved():
                 number_solved += 1
-                #print('Solved!')
             else:
                 not_solved_list.append((secret_word, self.solver.guess_history, self.solver.current_word_list))
-                #print('Not solved :(')
-            # print('{0} in {1} turns\n'
-            #        'Games Played: {2}\nAvg Turns: {3}\n'
-            #        'Number solved: {4}\nSolve Rate: {5}'.format(secret_word, turn, times_played,
-            #                                                     total_turns/times_played,number_solved,
-            #                                                     number_solved/times_played))
+
         print('Games Played: {0}\nAvg Turns: {1}\n'
               'Number solved: {2}\nSolve Rate: {3}'.format(times_played,
                                                            total_turns/times_played,number_solved,
                                                            number_solved/times_played))
-        for word in not_solved_list:
-            print('unable to solve {0} with these guesses:'.format(word[0]))
-            for g in word[1]:
-                print(g.word_string, g.colors)
-            print('remaining word list: {0}'.format(word[2]))
+        print('Calculated Rating: {0}'.format(round((total_turns/times_played) / (number_solved/times_played), 5)))
+
+        shelve_file = shelve.open("starting_words")
+        shelve_file[start_word] = round((total_turns/times_played) / (number_solved/times_played), 5)
+        print(f"Keys = {list(shelve_file.keys())}")
+        shelve_file.close()
 
     def auto(self):
         reader = ScreenReader()
@@ -135,7 +150,13 @@ class Wordle:
                 print('Unable to solve :(')
             print('\nGames Played: {0}\nAvg Turns: {1}\n'.format(times_played, total_turns/times_played))
             print('Number solved: {0}\nSolve Rate: {1}'.format(number_solved, number_solved/times_played))
-            self.solver = Solver(self.puzzle_word_list, ['*', '*', '*', '*', '*'], "soare")
+
+            shelve_file = shelve.open("starting_words")
+            starting_words = dict(shelve_file)
+            starting_words = sorted(starting_words)
+            first_guess = starting_words[0]
+
+            self.solver = Solver(self.puzzle_word_list, ['*', '*', '*', '*', '*'], first_guess)
             time.sleep(3)
             reader.click_replay()
             time.sleep(1.5)
@@ -152,7 +173,7 @@ class Wordle:
 
         # Loop while the guess is wrong and still within 6 guesses
         while not g.solved() and turn < 6:
-            g.colors = list(input("Please input the colors returned"))
+            g.colors = list(input("Please input the colors returned: "))
 
             if (g.solved()):
                 print("Yay!")

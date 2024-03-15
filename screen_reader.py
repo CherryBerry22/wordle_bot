@@ -12,6 +12,8 @@ INITIAL_ROW = 500
 OFFSET = 170
 
 PLAY_AGAIN_BUTTON = (550, 1550)
+
+
 class ScreenReader:
 
     def __init__(self):
@@ -46,16 +48,16 @@ class ScreenReader:
         ag.screenshot('current_screen.jpg')
         img = Image.open('current_screen.jpg')
         pix = img.load()
-        guess_row = self.initial_row + (self.offset * (guess_num-1))
+        guess_row = self.initial_row + (self.offset * (guess_num - 1))
         colors = []
         for i in range(0, 5):
             color = pix[self.first_letter + self.offset * i, guess_row]
             if 100 <= color[0] <= 110 and \
-                    165 <= color[1] <= 175 and\
+                    165 <= color[1] <= 175 and \
                     95 <= color[2] <= 105:
                 colors.append('g')
             elif 195 <= color[0] <= 205 and \
-                    175 <= color[1] <= 185 and\
+                    175 <= color[1] <= 185 and \
                     85 <= color[2] <= 95:
                 colors.append('y')
             else:
@@ -83,12 +85,9 @@ class ScreenReader:
         self.mouse.release(Button.left)
 
 
-
-
-
 # for my screen starts at x=550 y=485
 # each box is 155x155 with 15px gap between letters and rows
-def mouse_pos(x,y):
+def mouse_pos(x, y):
     print(ag.position())
     ag.screenshot('current_screen.jpg')
     img = Image.open('current_screen.jpg')
@@ -100,5 +99,3 @@ def mouse_pos(x,y):
           '\n HSV {3}'
           .format(x, y, pix[x, y], hsv_pix[x, y]))
     os.remove('current_screen.jpg')
-
-
